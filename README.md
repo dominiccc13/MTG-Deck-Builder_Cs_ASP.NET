@@ -1,6 +1,6 @@
 ## Project Overview
 
-This is a web application for searching Magic: The Gathering cards and building decks. It consists of an ASP.NET Core Web API backend that integrates with the public Scryfall API and a vanilla HTML and JavaScript frontend served directly from the application.
+This is a web application for searching Magic The Gathering cards and building decks. It was built with the ASP.NET Core framework to serve static pages and a dynamic controller for searching cards with various properties. It utilizes the Scryfall API.
 
 ## Backend Architecture
 
