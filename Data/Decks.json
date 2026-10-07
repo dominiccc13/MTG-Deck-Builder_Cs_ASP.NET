@@ -1,0 +1,26 @@
+﻿{
+	"user1": [
+        {
+            "sampleDeck1": {
+                "sampleCard1": {
+                    "ManaCost": "1",
+                    "TypeLine": "2",
+                    "Power": "3",
+                    "Toughness": "4",
+                    "OracleText": "5",
+                    "Rarity": "6",
+                    "ImageUri": "7"
+                },
+                "sampleCard2": {
+		            "ManaCost": "8",
+                    "TypeLine": "9",
+                    "Power": "10",
+                    "Toughness": "11",
+                    "OracleText": "12",
+                    "Rarity": "13",
+                    "ImageUri": "14"
+                }
+            }
+        }
+    ]
+}

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using mtg_deck_api.Models;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace mtg_deck_api.Controllers
 {
@@ -12,6 +13,88 @@ namespace mtg_deck_api.Controllers
         public CardsController(IHttpClientFactory httpClientFactory)
         {
             _httpClientFactory = httpClientFactory;
+        }
+
+        [HttpGet("decks/{username}")]
+        public async Task<IActionResult> GetDecks(string username)
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string filePath = Path.Combine(baseDir, "Data", "Decks.json");
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound();
+            }
+
+            string jsonContent = await System.IO.File.ReadAllTextAsync(filePath);
+            JsonObject rootObject = JsonNode.Parse(jsonContent)?.AsObject() ?? new JsonObject();
+
+            if (rootObject.TryGetPropertyValue(username, out var userNode))
+            {
+                return Ok(userNode);
+            }
+
+            return NotFound();
+        }
+
+        [HttpPost("save")]
+        public async Task<IActionResult> SaveDeck([FromBody] JsonElement requestData)
+        {
+            string deckName = requestData.GetProperty("deckName").ToString();
+            List<MtgCard> cards = requestData.GetProperty("deckCards").EnumerateArray()
+                .Select(card => MtgCard.AddCard(card))
+                .ToList();
+
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string filePath = Path.Combine(baseDir, "Data", "Decks.json");
+
+            JsonObject rootObject;
+            if (System.IO.File.Exists(filePath))
+            {
+                string jsonContent = await System.IO.File.ReadAllTextAsync(filePath);
+                rootObject = JsonNode.Parse(jsonContent)?.AsObject() ?? new JsonObject();
+            }
+            else
+            {
+                rootObject = new JsonObject();
+            }
+
+            JsonArray userDecksArray;
+            if (rootObject.TryGetPropertyValue(requestData.GetProperty("username").ToString(), out var existingNode) && existingNode is JsonArray jsonArray)
+            {
+                userDecksArray = jsonArray;
+            }
+            else
+            {
+                userDecksArray = new JsonArray();
+                rootObject[requestData.GetProperty("username").ToString()] = userDecksArray;
+            }
+
+            JsonObject cardsObject = new JsonObject();
+            foreach (var card in cards)
+            {
+                JsonObject cardDetails = new JsonObject
+                {
+                    ["ManaCost"] = card.ManaCost,
+                    ["TypeLine"] = card.TypeLine,
+                    ["Power"] = card.Power,
+                    ["Toughness"] = card.Toughness,
+                    ["OracleText"] = card.OracleText,
+                    ["Rarity"] = card.Rarity,
+                    ["ImageUri"] = card.ImageUri
+                };
+                cardsObject[card.Name ?? "UnknownCard"] = cardDetails;
+            }
+
+            JsonObject newDeckEntry = new JsonObject
+            {
+                [requestData.GetProperty("deckName").ToString()] = cardsObject
+            };
+            userDecksArray.Add(newDeckEntry);
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            await System.IO.File.WriteAllTextAsync(filePath, rootObject.ToJsonString(options));
+            return Ok(new { message = "Deck saved successfully." });
         }
 
         [HttpGet("search")]
@@ -64,7 +147,7 @@ namespace mtg_deck_api.Controllers
                     cards.Add(card);
                 }
             }
-            
+
             return Ok(cards);
         }
     }
