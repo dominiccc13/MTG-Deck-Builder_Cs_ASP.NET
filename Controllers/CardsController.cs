@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using mtg_deck_api.Models;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -110,6 +111,17 @@ namespace mtg_deck_api.Controllers
 
             var client = _httpClientFactory.CreateClient("ScryfallClient");
             var response = await client.GetAsync($"https://api.scryfall.com/cards/search?q={nameQuery + setQuery + colorQuery + costQuery}");
+            
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return Ok(new List<MtgCard>());
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway,
+                    new { message = "Card search service is unavailable. Please try again later." });
+            }
+            
             var data = await response.Content.ReadAsStringAsync();
             JsonElement json = JsonDocument.Parse(data).RootElement;
             JsonElement cardsJson = json.GetProperty("data");
@@ -123,8 +135,8 @@ namespace mtg_deck_api.Controllers
                     {
                         MtgCard card = new MtgCard();
                         card.Name = cardFace.GetProperty("name").ToString();
-                        card.ManaCost = cardFace.GetProperty("mana_cost").ToString();
-                        card.TypeLine = cardFace.GetProperty("type_line").ToString();
+                        card.ManaCost = (cardFace.TryGetProperty("mana_cost", out var manaCost)) ? manaCost.ToString() : null;
+                        card.TypeLine = (cardFace.TryGetProperty("type_line", out var typeLine)) ? typeLine.ToString() : null;
                         card.Power = (cardFace.TryGetProperty("power", out var power)) ? power.ToString() : null;
                         card.Toughness = (cardFace.TryGetProperty("toughness", out var toughness)) ? toughness.ToString() : null;
                         card.OracleText = cardFace.GetProperty("oracle_text").ToString();
